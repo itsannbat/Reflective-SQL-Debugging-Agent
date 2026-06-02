@@ -1,0 +1,362 @@
+[
+    {
+        "task_id": "easy_001",
+        "difficulty": "easy",
+        "database": "ecommerce_db",
+        "schema_ddl": "\nCREATE TABLE Customers (\n    customer_id SERIAL PRIMARY KEY,\n    name VARCHAR(100),\n    country VARCHAR(50),\n    signup_date DATE\n);\n\nCREATE TABLE Orders (\n    order_id SERIAL PRIMARY KEY,\n    customer_id INT REFERENCES Customers(customer_id),\n    order_date DATE,\n    total_amount DECIMAL(10, 2),\n    status VARCHAR(20)\n);\n\nCREATE TABLE Order_Items (\n    item_id SERIAL PRIMARY KEY,\n    order_id INT REFERENCES Orders(order_id),\n    product_name VARCHAR(100),\n    quantity INT,\n    price DECIMAL(10, 2)\n);\n-- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!\n",
+        "question": "Find the total number of orders placed by customers from the USA.",
+        "broken_query": "SELECT COUNT(order_id) FROM Orders WHERE customer_id IN (SELCT customer_id FROM Customers WHERE country = 'USA');",
+        "ground_truth_query": "SELECT COUNT(o.order_id) FROM Orders o JOIN Customers c ON o.customer_id = c.customer_id WHERE c.country = 'USA';",
+        "error_type": "Typo in keyword"
+    },
+    {
+        "task_id": "easy_002",
+        "difficulty": "easy",
+        "database": "ecommerce_db",
+        "schema_ddl": "\nCREATE TABLE Customers (\n    customer_id SERIAL PRIMARY KEY,\n    name VARCHAR(100),\n    country VARCHAR(50),\n    signup_date DATE\n);\n\nCREATE TABLE Orders (\n    order_id SERIAL PRIMARY KEY,\n    customer_id INT REFERENCES Customers(customer_id),\n    order_date DATE,\n    total_amount DECIMAL(10, 2),\n    status VARCHAR(20)\n);\n\nCREATE TABLE Order_Items (\n    item_id SERIAL PRIMARY KEY,\n    order_id INT REFERENCES Orders(order_id),\n    product_name VARCHAR(100),\n    quantity INT,\n    price DECIMAL(10, 2)\n);\n-- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!\n",
+        "question": "List the names of customers who have an order with a total amount greater than 1000.",
+        "broken_query": "SELECT name FROM Customers JOIN Orders ON customer_id = customer_id WHERE total_amount > 1000;",
+        "ground_truth_query": "SELECT DISTINCT c.name FROM Customers c JOIN Orders o ON c.customer_id = o.customer_id WHERE o.total_amount > 1000;",
+        "error_type": "Ambiguous column reference"
+    },
+    {
+        "task_id": "med_001",
+        "difficulty": "medium",
+        "database": "ecommerce_db",
+        "schema_ddl": "\nCREATE TABLE Customers (\n    customer_id SERIAL PRIMARY KEY,\n    name VARCHAR(100),\n    country VARCHAR(50),\n    signup_date DATE\n);\n\nCREATE TABLE Orders (\n    order_id SERIAL PRIMARY KEY,\n    customer_id INT REFERENCES Customers(customer_id),\n    order_date DATE,\n    total_amount DECIMAL(10, 2),\n    status VARCHAR(20)\n);\n\nCREATE TABLE Order_Items (\n    item_id SERIAL PRIMARY KEY,\n    order_id INT REFERENCES Orders(order_id),\n    product_name VARCHAR(100),\n    quantity INT,\n    price DECIMAL(10, 2)\n);\n-- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!\n",
+        "question": "Find the total revenue (sum of quantity * price) for the product 'Laptop'.",
+        "broken_query": "SELECT SUM(quantity + price) FROM Order_Items WHERE product_name = 'Laptop';",
+        "ground_truth_query": "SELECT SUM(quantity * price) FROM Order_Items WHERE product_name = 'Laptop';",
+        "error_type": "Incorrect mathematical operator"
+    },
+    {
+        "task_id": "med_002",
+        "difficulty": "medium",
+        "database": "ecommerce_db",
+        "schema_ddl": "\nCREATE TABLE Customers (\n    customer_id SERIAL PRIMARY KEY,\n    name VARCHAR(100),\n    country VARCHAR(50),\n    signup_date DATE\n);\n\nCREATE TABLE Orders (\n    order_id SERIAL PRIMARY KEY,\n    customer_id INT REFERENCES Customers(customer_id),\n    order_date DATE,\n    total_amount DECIMAL(10, 2),\n    status VARCHAR(20)\n);\n\nCREATE TABLE Order_Items (\n    item_id SERIAL PRIMARY KEY,\n    order_id INT REFERENCES Orders(order_id),\n    product_name VARCHAR(100),\n    quantity INT,\n    price DECIMAL(10, 2)\n);\n-- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!\n",
+        "question": "Count how many customers have NEVER placed an order.",
+        "broken_query": "SELECT COUNT(c.customer_id) FROM Customers c JOIN Orders o ON c.customer_id = o.customer_id WHERE o.order_id IS NULL;",
+        "ground_truth_query": "SELECT COUNT(c.customer_id) FROM Customers c LEFT JOIN Orders o ON c.customer_id = o.customer_id WHERE o.order_id IS NULL;",
+        "error_type": "Wrong JOIN type (INNER vs LEFT)"
+    },
+    {
+        "task_id": "hard_001",
+        "difficulty": "hard",
+        "database": "ecommerce_db",
+        "schema_ddl": "\nCREATE TABLE Customers (\n    customer_id SERIAL PRIMARY KEY,\n    name VARCHAR(100),\n    country VARCHAR(50),\n    signup_date DATE\n);\n\nCREATE TABLE Orders (\n    order_id SERIAL PRIMARY KEY,\n    customer_id INT REFERENCES Customers(customer_id),\n    order_date DATE,\n    total_amount DECIMAL(10, 2),\n    status VARCHAR(20)\n);\n\nCREATE TABLE Order_Items (\n    item_id SERIAL PRIMARY KEY,\n    order_id INT REFERENCES Orders(order_id),\n    product_name VARCHAR(100),\n    quantity INT,\n    price DECIMAL(10, 2)\n);\n-- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!\n",
+        "question": "Get the latest order date for every customer.",
+        "broken_query": "SELECT c.name, (SELECT MAX(order_date) FROM Orders o WHERE o.customer_id = c.customer_id) as latest_order FROM Customers c;",
+        "ground_truth_query": "SELECT c.name, MAX(o.order_date) FROM Customers c LEFT JOIN Orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id, c.name;",
+        "error_type": "Correlated subquery / N+1 query problem"
+    },
+    {
+        "task_id": "hard_002",
+        "difficulty": "hard",
+        "database": "ecommerce_db",
+        "schema_ddl": "\nCREATE TABLE Customers (\n    customer_id SERIAL PRIMARY KEY,\n    name VARCHAR(100),\n    country VARCHAR(50),\n    signup_date DATE\n);\n\nCREATE TABLE Orders (\n    order_id SERIAL PRIMARY KEY,\n    customer_id INT REFERENCES Customers(customer_id),\n    order_date DATE,\n    total_amount DECIMAL(10, 2),\n    status VARCHAR(20)\n);\n\nCREATE TABLE Order_Items (\n    item_id SERIAL PRIMARY KEY,\n    order_id INT REFERENCES Orders(order_id),\n    product_name VARCHAR(100),\n    quantity INT,\n    price DECIMAL(10, 2)\n);\n-- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!\n",
+        "question": "Find all orders placed in 2023.",
+        "broken_query": "SELECT * FROM Orders WHERE EXTRACT(YEAR FROM order_date) = 2023;",
+        "ground_truth_query": "SELECT * FROM Orders WHERE order_date >= '2023-01-01' AND order_date < '2024-01-01';",
+        "error_type": "Function on indexed column (Sargability violation)"
+    },
+    {
+        "task_id": "spider_easy_1",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the max age of female students in NY?",
+        "broken_query": "SELECT MAX(age FROM student WHERE city = 'NY' AND gender = 'F'",
+        "ground_truth_query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "error_type": "Removed random parenthesis"
+    },
+    {
+        "task_id": "spider_easy_2",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "List employee names grouped by department.",
+        "broken_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id",
+        "ground_truth_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "error_type": "Deleted GROUP BY clause"
+    },
+    {
+        "task_id": "spider_easy_3",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the minimum salary in CS or Physics?",
+        "broken_query": "SELET MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "ground_truth_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_4",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "Find names of drivers who have races.",
+        "broken_query": "SELET T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "ground_truth_query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_5",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "How many 8-cylinder cars are from before 1980?",
+        "broken_query": "SELECT count(* FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "ground_truth_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "error_type": "Removed random parenthesis"
+    },
+    {
+        "task_id": "spider_easy_6",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the max age of female students in NY?",
+        "broken_query": "SELECT MAXage) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "ground_truth_query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "error_type": "Removed random parenthesis"
+    },
+    {
+        "task_id": "spider_easy_7",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "List employee names grouped by department.",
+        "broken_query": "SELET name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "ground_truth_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_8",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the minimum salary in CS or Physics?",
+        "broken_query": "SELET MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "ground_truth_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_9",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "Find names of drivers who have races.",
+        "broken_query": "SELET T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "ground_truth_query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_10",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "How many 8-cylinder cars are from before 1980?",
+        "broken_query": "SELECT count*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "ground_truth_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "error_type": "Removed random parenthesis"
+    },
+    {
+        "task_id": "spider_easy_11",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the max age of female students in NY?",
+        "broken_query": "SELET MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "ground_truth_query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_12",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "List employee names grouped by department.",
+        "broken_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id",
+        "ground_truth_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "error_type": "Deleted GROUP BY clause"
+    },
+    {
+        "task_id": "spider_easy_13",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the minimum salary in CS or Physics?",
+        "broken_query": "SELET MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "ground_truth_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_14",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "Find names of drivers who have races.",
+        "broken_query": "SELET T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "ground_truth_query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "error_type": "Misspelled SELECT as SELET"
+    },
+    {
+        "task_id": "spider_easy_15",
+        "difficulty": "easy",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "How many 8-cylinder cars are from before 1980?",
+        "broken_query": "SELECT count*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "ground_truth_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "error_type": "Removed random parenthesis"
+    },
+    {
+        "task_id": "spider_med_1",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "How many 8-cylinder cars are from before 1980?",
+        "broken_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 OR year < 1980",
+        "ground_truth_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "error_type": "Changed AND to OR"
+    },
+    {
+        "task_id": "spider_med_2",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "Find names of drivers who have races.",
+        "broken_query": "SELECT T1.name FROM driver AS T1 LEFT JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "ground_truth_query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "error_type": "Swapped INNER JOIN to LEFT JOIN"
+    },
+    {
+        "task_id": "spider_med_3",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the minimum salary in CS or Physics?",
+        "broken_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' AND dept_name = 'Physics'",
+        "ground_truth_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "error_type": "Changed OR to AND"
+    },
+    {
+        "task_id": "spider_med_4",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "List employee names grouped by department.",
+        "broken_query": "SELECT name FROM employee LEFT JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "ground_truth_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "error_type": "Swapped INNER JOIN to LEFT JOIN"
+    },
+    {
+        "task_id": "spider_med_5",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the max age of female students in NY?",
+        "broken_query": "SELECT MAX(age) FROM student WHERE city = 'NY' OR gender = 'F'",
+        "ground_truth_query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "error_type": "Changed AND to OR"
+    },
+    {
+        "task_id": "spider_med_6",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "How many 8-cylinder cars are from before 1980?",
+        "broken_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 OR year < 1980",
+        "ground_truth_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "error_type": "Changed AND to OR"
+    },
+    {
+        "task_id": "spider_med_7",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "Find names of drivers who have races.",
+        "broken_query": "SELECT T1.name FROM driver AS T1 LEFT JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "ground_truth_query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "error_type": "Swapped INNER JOIN to LEFT JOIN"
+    },
+    {
+        "task_id": "spider_med_8",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the minimum salary in CS or Physics?",
+        "broken_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' AND dept_name = 'Physics'",
+        "ground_truth_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "error_type": "Changed OR to AND"
+    },
+    {
+        "task_id": "spider_med_9",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "List employee names grouped by department.",
+        "broken_query": "SELECT name FROM employee LEFT JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "ground_truth_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "error_type": "Swapped INNER JOIN to LEFT JOIN"
+    },
+    {
+        "task_id": "spider_med_10",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the max age of female students in NY?",
+        "broken_query": "SELECT MAX(age) FROM student WHERE city = 'NY' OR gender = 'F'",
+        "ground_truth_query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "error_type": "Changed AND to OR"
+    },
+    {
+        "task_id": "spider_med_11",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "How many 8-cylinder cars are from before 1980?",
+        "broken_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 OR year < 1980",
+        "ground_truth_query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980",
+        "error_type": "Changed AND to OR"
+    },
+    {
+        "task_id": "spider_med_12",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "Find names of drivers who have races.",
+        "broken_query": "SELECT T1.name FROM driver AS T1 LEFT JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "ground_truth_query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid",
+        "error_type": "Swapped INNER JOIN to LEFT JOIN"
+    },
+    {
+        "task_id": "spider_med_13",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the minimum salary in CS or Physics?",
+        "broken_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' AND dept_name = 'Physics'",
+        "ground_truth_query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'",
+        "error_type": "Changed OR to AND"
+    },
+    {
+        "task_id": "spider_med_14",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "List employee names grouped by department.",
+        "broken_query": "SELECT name FROM employee LEFT JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "ground_truth_query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id",
+        "error_type": "Swapped INNER JOIN to LEFT JOIN"
+    },
+    {
+        "task_id": "spider_med_15",
+        "difficulty": "medium",
+        "database": "spider_mock_db",
+        "schema_ddl": "-- (Target Spider Schema would be injected here)",
+        "question": "What is the max age of female students in NY?",
+        "broken_query": "SELECT MAX(age) FROM student WHERE city = 'NY' OR gender = 'F'",
+        "ground_truth_query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",
+        "error_type": "Changed AND to OR"
+    }
+]
