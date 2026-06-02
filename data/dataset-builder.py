@@ -9,11 +9,18 @@ import argparse
 # =====================================================================
 DATASET = []
 
-def classify_difficulty(query: str) -> str:
-    q = query.upper()
-    if any(x in q for x in ["INTERSECT", "EXCEPT", "UNION", "HAVING", "WITH "]):
+def get_difficulty_from_sql(sql: dict) -> str:
+    if sql.get("intersect") or sql.get("union") or sql.get("except"):
+        return "extra hard"
+    count_comp = 0
+    count_comp += len(sql.get("where", []))
+    count_comp += 1 if sql.get("groupBy") else 0
+    count_comp += 1 if sql.get("orderBy") else 0
+    count_comp += 1 if sql.get("having") else 0
+    count_comp += 1 if sql.get("limit") else 0
+    if count_comp > 2:
         return "hard"
-    if any(x in q for x in ["JOIN", "GROUP BY", "AVG(", "MAX(", "MIN(", "COUNT("]):
+    if count_comp > 1:
         return "medium"
     return "easy"
 
@@ -223,13 +230,6 @@ def perturb_hard(query: str) -> tuple[str, str | None]:
 # Spider Expansion
 # =====================================================================
 
-MOCK_SPIDER_QUERIES = [
-    {"query": "SELECT MAX(age) FROM student WHERE city = 'NY' AND gender = 'F'",  "question": "What is the max age of female students in NY?",         "db_id": "mock_db"},
-    {"query": "SELECT name FROM employee INNER JOIN department ON employee.dept_id = department.id GROUP BY department.id", "question": "List employee names grouped by department.", "db_id": "mock_db"},
-    {"query": "SELECT MIN(salary) FROM instructor WHERE dept_name = 'Comp. Sci.' OR dept_name = 'Physics'", "question": "What is the minimum salary in CS or Physics?", "db_id": "mock_db"},
-    {"query": "SELECT T1.name FROM driver AS T1 JOIN races AS T2 ON T1.driverid = T2.driverid", "question": "Find names of drivers who have races.",    "db_id": "mock_db"},
-    {"query": "SELECT count(*) FROM cars_data WHERE cylinders = 8 AND year < 1980", "question": "How many 8-cylinder cars are from before 1980?",       "db_id": "mock_db"},
-] * 10
 
 
 def expand_dataset_with_spider(
@@ -247,14 +247,13 @@ def expand_dataset_with_spider(
     # Load schemas (empty dict if no tables.json provided)
     schemas = load_spider_schemas(spider_tables_path)
 
-    # Load queries
-    if spider_data_path and os.path.exists(spider_data_path):
-        with open(spider_data_path, "r") as f:
-            spider_queries = json.load(f)
-        print(f"📂 Loaded {len(spider_queries)} queries from {spider_data_path}")
-    else:
-        spider_queries = MOCK_SPIDER_QUERIES
-        print("⚠️  No Spider dev.json found — using mock queries.")
+    # Load queries]
+    if not spider_data_path or not os.path.exists(spider_data_path):
+        raise FileNotFoundError(f"Spider dev.json not found at: {spider_data_path}")
+
+    with open(spider_data_path, "r") as f:
+        spider_queries = json.load(f)
+    print(f"📂 Loaded {len(spider_queries)} queries from {spider_data_path}")
 
     # --- Easy tier ---
     easy_count = 0
@@ -268,7 +267,7 @@ def expand_dataset_with_spider(
         db_id = item.get("db_id", "spider_db")
         DATASET.append({
             "task_id": f"spider_easy_{easy_count + 1:03d}",
-            "difficulty": "easy",
+            "difficulty": get_difficulty_from_sql(item["sql"]),
             "database": db_id,
             "schema_ddl": schemas.get(db_id, f"-- Schema for '{db_id}' not available"),
             "question": item["question"],
@@ -292,7 +291,7 @@ def expand_dataset_with_spider(
         db_id = item.get("db_id", "spider_db")
         DATASET.append({
             "task_id": f"spider_med_{med_count + 1:03d}",
-            "difficulty": "medium",
+            "difficulty": get_difficulty_from_sql(item["sql"]),
             "database": db_id,
             "schema_ddl": schemas.get(db_id, f"-- Schema for '{db_id}' not available"),
             "question": item["question"],
@@ -305,7 +304,7 @@ def expand_dataset_with_spider(
     print(f"✅ Generated {med_count} medium entries")
 
     # --- Hard tier (filter Spider's own difficulty field) ---
-    hard_queries = [q for q in spider_queries if classify_difficulty(q["query"]) == "hard"]
+    hard_queries = [q for q in spider_queries if get_difficulty_from_sql(q["sql"]) in ("hard", "extra hard")]
     hard_count = 0
     for item in hard_queries:
         if hard_count >= hard_target:
@@ -317,7 +316,7 @@ def expand_dataset_with_spider(
         db_id = item.get("db_id", "spider_db")
         DATASET.append({
             "task_id": f"spider_hard_{hard_count + 1:03d}",
-            "difficulty": "hard",
+            "difficulty": get_difficulty_from_sql(item["sql"]),
             "database": db_id,
             "schema_ddl": schemas.get(db_id, f"-- Schema for '{db_id}' not available"),
             "question": item["question"],
@@ -348,6 +347,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build the SQL debugging eval dataset.")
     parser.add_argument(
         "--spider_dev",
+        required=True,
         default=None,
         help="Path to Spider dev.json (e.g. spider/dev.json)",
     )
