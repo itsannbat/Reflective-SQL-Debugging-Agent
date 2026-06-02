@@ -5,63 +5,17 @@ import re
 import argparse
 
 # =====================================================================
-# Database Setup (PostgreSQL) - Hard Tier
+# Difficulty Classifier (based on query features, used for Spider entries without explicit difficulty)
 # =====================================================================
+DATASET = []
 
-ECOMMERCE_DDL = """
-CREATE TABLE Customers (
-    customer_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    country VARCHAR(50),
-    signup_date DATE
-);
-
-CREATE TABLE Orders (
-    order_id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES Customers(customer_id),
-    order_date DATE,
-    total_amount DECIMAL(10, 2),
-    status VARCHAR(20)
-);
-
-CREATE TABLE Order_Items (
-    item_id SERIAL PRIMARY KEY,
-    order_id INT REFERENCES Orders(order_id),
-    product_name VARCHAR(100),
-    quantity INT,
-    price DECIMAL(10, 2)
-);
--- Note: Indexes intentionally omitted so the agent can recommend them in 'hard' mode!
-"""
-
-# =====================================================================
-# Hard Tier Seed (Hand-crafted performance cases)
-# 
-# TODO: Add more hand-crafted entries here that target specific performance anti-patterns
-# =====================================================================
-
-DATASET = [
-    {
-        "task_id": "hard_001",
-        "difficulty": "hard",
-        "database": "ecommerce_db",
-        "schema_ddl": ECOMMERCE_DDL,
-        "question": "Get the latest order date for every customer.",
-        "broken_query": "SELECT c.name, (SELECT MAX(order_date) FROM Orders o WHERE o.customer_id = c.customer_id) as latest_order FROM Customers c;",
-        "ground_truth_query": "SELECT c.name, MAX(o.order_date) FROM Customers c LEFT JOIN Orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id, c.name;",
-        "error_type": "Correlated subquery / N+1 query problem"
-    },
-    {
-        "task_id": "hard_002",
-        "difficulty": "hard",
-        "database": "ecommerce_db",
-        "schema_ddl": ECOMMERCE_DDL,
-        "question": "Find all orders placed in 2023.",
-        "broken_query": "SELECT * FROM Orders WHERE EXTRACT(YEAR FROM order_date) = 2023;",
-        "ground_truth_query": "SELECT * FROM Orders WHERE order_date >= '2023-01-01' AND order_date < '2024-01-01';",
-        "error_type": "Function on indexed column (Sargability violation)"
-    }
-]
+def classify_difficulty(query: str) -> str:
+    q = query.upper()
+    if any(x in q for x in ["INTERSECT", "EXCEPT", "UNION", "HAVING", "WITH "]):
+        return "hard"
+    if any(x in q for x in ["JOIN", "GROUP BY", "AVG(", "MAX(", "MIN(", "COUNT("]):
+        return "medium"
+    return "easy"
 
 # =====================================================================
 # Schema DDL Builder from Spider tables.json
@@ -238,6 +192,32 @@ def perturb_medium(query: str) -> tuple[str, str | None]:
                 re.sub(r"\bOR\b", "AND", query, count=1, flags=re.IGNORECASE),
                 "Changed OR to AND",
             )
+        
+def perturb_hard(query: str) -> tuple[str, str | None]:
+    """Applies performance anti-pattern manipulations."""
+    options = []
+    if re.search(r"\bWHERE\b", query, re.IGNORECASE):
+        options.append("function_wrap")
+    if re.search(r"\bSELECT\b.*\bFROM\b", query, re.IGNORECASE):
+        options.append("select_star")
+
+    if not options:
+        return query, None
+
+    choice = random.choice(options)
+
+    if choice == "function_wrap":
+        # Wrap a column in a function to break sargability
+        return (
+            re.sub(r"\bWHERE\s+(\w+)\s*=", r"WHERE LOWER(\1) =", query, count=1, flags=re.IGNORECASE),
+            "Function on filtered column (Sargability violation)",
+        )
+    elif choice == "select_star":
+        return (
+            re.sub(r"\bSELECT\b(?!\s*\*)\s+[\w\s,\.]+\bFROM\b", "SELECT * FROM", query, count=1, flags=re.IGNORECASE),
+            "SELECT * instead of specific columns",
+        )
+
 
 # =====================================================================
 # Spider Expansion
@@ -255,9 +235,11 @@ MOCK_SPIDER_QUERIES = [
 def expand_dataset_with_spider(
     spider_data_path: str | None = None,
     spider_tables_path: str | None = None,
-    easy_target: int = 15,
-    medium_target: int = 15,
+    easy_target: int = 34,
+    medium_target: int = 33,
+    hard_target: int = 33,
 ) -> None:
+    global DATASET
     """
     Loads Spider dev.json (falls back to mock data) and appends
     easy + medium perturbation entries to DATASET.
@@ -322,6 +304,31 @@ def expand_dataset_with_spider(
 
     print(f"✅ Generated {med_count} medium entries")
 
+    # --- Hard tier (filter Spider's own difficulty field) ---
+    hard_queries = [q for q in spider_queries if classify_difficulty(q["query"]) == "hard"]
+    hard_count = 0
+    for item in hard_queries:
+        if hard_count >= hard_target:
+            break
+        broken, error_type = perturb_hard(item["query"])
+        if error_type is None:
+            continue
+
+        db_id = item.get("db_id", "spider_db")
+        DATASET.append({
+            "task_id": f"spider_hard_{hard_count + 1:03d}",
+            "difficulty": "hard",
+            "database": db_id,
+            "schema_ddl": schemas.get(db_id, f"-- Schema for '{db_id}' not available"),
+            "question": item["question"],
+            "broken_query": broken,
+            "ground_truth_query": item["query"],
+            "error_type": error_type,
+        })
+        hard_count += 1
+
+    print(f"✅ Generated {hard_count} hard entries")
+
 # =====================================================================
 # Export
 # =====================================================================
@@ -352,14 +359,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--easy_target",
         type=int,
-        default=15,
-        help="Number of easy entries to generate from Spider (default: 15)",
+        default=34,
+        help="Number of easy entries to generate from Spider (default: 34)",
     )
     parser.add_argument(
         "--medium_target",
         type=int,
-        default=15,
-        help="Number of medium entries to generate from Spider (default: 15)",
+        default=33,
+        help="Number of medium entries to generate from Spider (default: 33)",
+    )
+    parser.add_argument(
+        "--hard_target",
+        type=int,
+        default=33,
+        help="Number of hard entries to generate from Spider (default: 33)",
     )
     parser.add_argument(
         "--output",
@@ -373,5 +386,6 @@ if __name__ == "__main__":
         spider_tables_path=args.spider_tables,
         easy_target=args.easy_target,
         medium_target=args.medium_target,
+        hard_target=args.hard_target,
     )
     export_dataset(args.output)
