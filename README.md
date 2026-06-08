@@ -10,21 +10,86 @@ Reflection / self-correction design pattern. Inference backend: **vLLM serving N
 
 ```
 .
-├── data/                  # Spider/BirdBench dataset builder, ground-truth queries
+├── agent/                 # Reflection loop, SQL tools — Person 2
+│   ├── loop.py            # Stateful reflection loop (AgentConfig, ReflectionAgent)
+│   ├── tools.py           # execute_sql and explain_query (Postgres, always rollback)
+│   ├── prompts.py         # System prompt templates and verbosity formatting
+│   ├── metrics.py         # Per-round and per-task metric tracking → JSON
+│   ├── mock_llm.py        # Drop-in fake LLM client for local testing
+│   └── run.py             # CLI entrypoint
+├── data/                  # Spider dataset + dataset builder
 │   ├── dataset-builder.py
-│   ├── dataset.json
+│   ├── dataset.json       # 100 tasks (easy/medium/hard) with broken queries
 │   └── spider/
 ├── infra/                 # vLLM serving on TPU — Person 1
 │   ├── README.md          # full operator runbook
 │   ├── COST_DISCIPLINE.md # min-time workflow, $ math, cardinal rules
 │   ├── provision_tpu.sh
 │   ├── stop_tpu.sh
-│   ├── setup_vm.sh
+│   ├── setup_vm_docker.sh
 │   ├── serve_vllm.sh
 │   ├── smoke_test.py
 │   └── configs/           # 4 presets for prefix-cache × chunked-prefill A/B
-└── agent/                 # (TODO) reflection loop, SQL tools — Person 2
+├── scripts/
+│   └── load_schemas.py    # Load Spider DB schemas into local Postgres
+├── docker-compose.yml     # Local Postgres (spider_eval, port 5432)
+└── requirements-agent.txt
 ```
+
+## Local development
+
+No GCP needed for dev. Three levels depending on how much you want running.
+
+### Level 1 — mock LLM, no database
+
+Confirms the loop, CLI, and JSON output shape work. No Docker required.
+
+```bash
+pip install -r requirements-agent.txt
+python -m agent.run --task-id spider_easy_001 --mock
+```
+
+### Level 2 — real Postgres, mock LLM (recommended for dev)
+
+`execute_sql` hits a real database so you get real SQL errors back. Requires Docker.
+
+```bash
+# Start Postgres
+docker compose up -d
+
+# Load all Spider schemas (one-time, idempotent)
+python scripts/load_schemas.py
+
+# Run a task — real SQL errors, mock LLM
+python -m agent.run --task-id spider_easy_001 --mock
+
+# Test sweep variables
+python -m agent.run --task-id spider_easy_001 --mock --max-rounds 3
+python -m agent.run --task-id spider_easy_001 --mock --verbosity compact
+```
+
+### Level 3 — real Postgres, real local LLM via Ollama
+
+Full end-to-end without touching GCP. Requires [Ollama](https://ollama.com) and enough RAM to run an 8B model (~6 GB).
+
+```bash
+brew install ollama
+ollama pull llama3.1:8b
+ollama serve   # runs on localhost:11434
+
+# In another terminal — point the agent at Ollama's OpenAI-compatible API
+python -m agent.run --task-id spider_easy_001 \
+  --endpoint http://localhost:11434/v1 \
+  --model llama3.1:8b
+```
+
+> Note: Ollama does not expose Prometheus metrics, so this is only useful for validating agent logic — not for the final experiment measurements.
+
+---
+
+## Final experiment (GCP TPU)
+
+The final experiment requires the TPU VM for vLLM's Prometheus metrics (prefix cache hit rate, TTFT, chunked prefill latency). Run this only when you're ready to collect results — the VM costs ~$115/day while running.
 
 ## Inference endpoint (Person 1's deliverable)
 
@@ -89,7 +154,7 @@ curl http://localhost:8000/v1/chat/completions \
 
 ### First-time bring-up
 
-See [`infra/README.md`](infra/README.md) for the one-time setup walkthrough (provision → SCP scripts → install vLLM + Postgres + pre-download model → launch).
+See [`infra/README.md`](infra/README.md) for the one-time setup walkthrough (provision → SCP scripts → `setup_vm_docker.sh` → pre-download model → launch).
 
 ## Dataset Builder
 
