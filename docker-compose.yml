@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sqlagent
+      POSTGRES_DB: spider_eval
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sqlagent -d spider_eval"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
