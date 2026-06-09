@@ -63,13 +63,27 @@ def load(dsn: str, dataset_path: str, dry_run: bool) -> None:
             cur.execute(f"DROP TABLE IF EXISTS {db_name}.{tbl} CASCADE")
 
         # Run each CREATE TABLE statement separately.
+        # Skip statements that fail (e.g. FK type mismatches in Spider schemas) —
+        # referential integrity is not needed for SQL error testing.
+        warnings = []
         for stmt in ddl.split(";"):
             stmt = stmt.strip()
-            if stmt:
+            if not stmt:
+                continue
+            try:
                 cur.execute(stmt)
+            except psycopg2.Error as e:
+                conn.rollback()
+                cur.execute(f"SET search_path TO {db_name}")
+                warnings.append(str(e).strip().splitlines()[0])
 
         cur.execute(f"SET search_path TO public")
-        print("OK")
+        if warnings:
+            print(f"OK (with {len(warnings)} skipped constraint(s))")
+            for w in warnings:
+                print(f"    [skip] {w}")
+        else:
+            print("OK")
 
     cur.close()
     conn.close()

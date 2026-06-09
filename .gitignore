@@ -1,3 +1,5 @@
 venv
 __pycache__/
 *.pyc
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz

@@ -1,0 +1,44 @@
+Hypothesis Tests (Mann-Whitney U, two-sided, α=0.05)
+============================================================
+
+'prefix_on+chunked_on' vs 'prefix_on+chunked_off'
+----------------------------------------
+  success rate: 39/100=39.0% vs 40/100=40.0%  p=1.0000 ns
+  Total tokens per task: median 4209.50 vs 4224.00  U=4874  p=0.7600  r=0.025  ns
+  Task latency (s): median 3.05 vs 3.07  U=4829  p=0.6770  r=0.034  ns
+  Rounds per task: median 5.00 vs 5.00  U=4834  p=0.6237  r=0.033  ns
+
+'prefix_on+chunked_on' vs 'prefix_off+chunked_on'
+----------------------------------------
+  success rate: 39/100=39.0% vs 36/100=36.0%  p=0.7703 ns
+  Total tokens per task: median 4209.50 vs 4244.50  U=4846  p=0.7085  r=0.031  ns
+  Task latency (s): median 3.05 vs 3.25  U=4299  p=0.0870  r=0.140  ns
+  Rounds per task: median 5.00 vs 5.00  U=4756  p=0.4663  r=0.049  ns
+
+'prefix_on+chunked_on' vs 'prefix_off+chunked_off'
+----------------------------------------
+  success rate: 39/100=39.0% vs 33/100=33.0%  p=0.4615 ns
+  Total tokens per task: median 4209.50 vs 4294.00  U=4704  p=0.4695  r=0.059  ns
+  Task latency (s): median 3.05 vs 3.38  U=4288  p=0.0819  r=0.142  ns
+  Rounds per task: median 5.00 vs 5.00  U=4566  p=0.1868  r=0.087  ns
+
+'prefix_on+chunked_off' vs 'prefix_off+chunked_on'
+----------------------------------------
+  success rate: 40/100=40.0% vs 36/100=36.0%  p=0.6622 ns
+  Total tokens per task: median 4224.00 vs 4244.50  U=4970  p=0.9425  r=0.006  ns
+  Task latency (s): median 3.07 vs 3.25  U=4470  p=0.1953  r=0.106  ns
+  Rounds per task: median 5.00 vs 5.00  U=4919  p=0.8072  r=0.016  ns
+
+'prefix_on+chunked_off' vs 'prefix_off+chunked_off'
+----------------------------------------
+  success rate: 40/100=40.0% vs 33/100=33.0%  p=0.3782 ns
+  Total tokens per task: median 4224.00 vs 4294.00  U=4824  p=0.6681  r=0.035  ns
+  Task latency (s): median 3.07 vs 3.38  U=4515  p=0.2365  r=0.097  ns
+  Rounds per task: median 5.00 vs 5.00  U=4727  p=0.3981  r=0.055  ns
+
+'prefix_off+chunked_on' vs 'prefix_off+chunked_off'
+----------------------------------------
+  success rate: 36/100=36.0% vs 33/100=33.0%  p=0.7662 ns
+  Total tokens per task: median 4244.50 vs 4294.00  U=4864  p=0.7397  r=0.027  ns
+  Task latency (s): median 3.25 vs 3.38  U=5039  p=0.9251  r=-0.008  ns
+  Rounds per task: median 5.00 vs 5.00  U=4810  p=0.5518  r=0.038  ns

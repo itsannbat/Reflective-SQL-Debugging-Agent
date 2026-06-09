@@ -1,0 +1,26 @@
+{
+  "before": {
+    "timestamp": "2026-06-09T00:44:43.499716Z",
+    "url": "http://localhost:8000/metrics",
+    "vllm:num_requests_running": 0.0,
+    "vllm:num_requests_waiting": 0.0,
+    "vllm:time_to_first_token_seconds_count": 0.0,
+    "vllm:time_to_first_token_seconds_sum": 0.0,
+    "vllm:e2e_request_latency_seconds_count": 0.0,
+    "vllm:e2e_request_latency_seconds_sum": 0.0,
+    "vllm:time_to_first_token_seconds_mean": null,
+    "vllm:e2e_request_latency_seconds_mean": null
+  },
+  "after": {
+    "timestamp": "2026-06-09T00:47:23.344356Z",
+    "url": "http://localhost:8000/metrics",
+    "vllm:num_requests_running": 0.0,
+    "vllm:num_requests_waiting": 0.0,
+    "vllm:time_to_first_token_seconds_count": 451.0,
+    "vllm:time_to_first_token_seconds_sum": 23.326647996902466,
+    "vllm:e2e_request_latency_seconds_count": 451.0,
+    "vllm:e2e_request_latency_seconds_sum": 266.873553276062,
+    "vllm:time_to_first_token_seconds_mean": 0.05172205764279926,
+    "vllm:e2e_request_latency_seconds_mean": 0.5917373686830644
+  }
+}

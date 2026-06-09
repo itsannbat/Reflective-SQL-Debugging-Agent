@@ -17,6 +17,10 @@ Reflection / self-correction design pattern. Inference backend: **vLLM serving N
 │   ├── metrics.py         # Per-round and per-task metric tracking → JSON
 │   ├── mock_llm.py        # Drop-in fake LLM client for local testing
 │   └── run.py             # CLI entrypoint
+├── benchmark/             # Sweep harness + analysis — Person 3
+│   ├── harness.py         # CLI sweep runner (ThreadPoolExecutor, JSONL output)
+│   ├── analyze.py         # Stats, hypothesis tests, and plots
+│   └── prometheus_scraper.py  # Scrapes vLLM /metrics before/after each sweep
 ├── data/                  # Spider dataset + dataset builder
 │   ├── dataset-builder.py
 │   ├── dataset.json       # 100 tasks (easy/medium/hard) with broken queries
@@ -30,10 +34,21 @@ Reflection / self-correction design pattern. Inference backend: **vLLM serving N
 │   ├── serve_vllm.sh
 │   ├── smoke_test.py
 │   └── configs/           # 4 presets for prefix-cache × chunked-prefill A/B
+├── results/               # All experiment outputs (see Results section below)
+│   ├── takeaways.md       # Full analysis write-up with all findings
+│   ├── summary.csv        # Per-condition aggregate stats
+│   ├── hyp_tests.txt      # Mann-Whitney U + Fisher's exact test results
+│   ├── engine_analysis/   # 4-way engine config analysis (prefix × chunked)
+│   │   └── plots/         # success_rate, latency_box, tokens_box, rounds_cdf,
+│   │                      #   budget_curve, ttft_bar
+│   ├── verbosity_analysis/ # Full vs compact verbosity comparison
+│   │   └── plots/         # same 6 plots
+│   └── raw/               # Raw JSONL sweep files + Prometheus delta snapshots
 ├── scripts/
 │   └── load_schemas.py    # Load Spider DB schemas into local Postgres
 ├── docker-compose.yml     # Local Postgres (spider_eval, port 5432)
-└── requirements-agent.txt
+├── requirements-agent.txt
+└── requirements-benchmark.txt
 ```
 
 ## Local development
@@ -166,6 +181,50 @@ python3 data/dataset-builder.py \
   --spider_tables data/spider/tables.json \
   --output data/dataset.json
 ```
+
+## Benchmarking
+
+### Running a sweep
+
+```bash
+pip install -r requirements-benchmark.txt
+
+# Example: full verbosity, prefix_on+chunked_on engine, 100 tasks
+python -m benchmark.harness \
+  --verbosity full \
+  --concurrency 2 \
+  --prom-url http://localhost:8000/metrics \
+  --output results/raw/sweep_full.jsonl
+```
+
+Key flags: `--verbosity [full|compact]`, `--max-rounds N`, `--concurrency N`, `--prom-url` (omit if no Prometheus endpoint).
+
+### Running analysis
+
+```bash
+# Engine config comparison (4 presets)
+python -m benchmark.analyze \
+  --results results/raw/sweep_full.jsonl results/raw/sweep_prefix_on_chunked_off.jsonl \
+            results/raw/sweep_prefix_off_chunked_on.jsonl results/raw/sweep_engine_off.jsonl \
+  --labels "prefix_on+chunked_on" "prefix_on+chunked_off" "prefix_off+chunked_on" "prefix_off+chunked_off" \
+  --output results/engine_analysis \
+  --prom-snapshots results/raw/sweep_full_prom.json results/raw/sweep_prefix_on_chunked_off_prom.json \
+                   results/raw/sweep_prefix_off_chunked_on_prom.json results/raw/sweep_engine_off_prom.json
+```
+
+Outputs per analysis directory: `summary.csv`, `hyp_tests.txt`, and 6 plots (`success_rate`, `latency_box`, `tokens_box`, `rounds_cdf`, `budget_curve`, `ttft_bar`).
+
+## Results
+
+All outputs are in [`results/`](results/). Start with [`results/takeaways.md`](results/takeaways.md) for the full write-up. Key findings:
+
+- **Overall success**: 33–40% across conditions (100 Spider tasks, 34E/33M/33H, max 5 rounds)
+- **Reflection budget**: 0% at budget=1, rising monotonically to 33–40% at budget=5; curve not saturated
+- **Prefix caching**: cuts mean TTFT by **~48%** (52ms → 27ms), confirmed within the proposal's predicted 30–60% range; reduces median task latency by ~0.3s
+- **Prompt growth**: prompt length grows **2.3×** from round 1 → round 5 (547 → 1242 tokens); per-round latency grows proportionally (1.8–2.0×), confirming prefill cost dominates later rounds
+- **Chunked prefill**: no measurable effect at mean or tail (p95/p99); concurrency=2 was too low to trigger head-of-line blocking
+- **Verbosity**: full output (+4pp success vs compact) not statistically significant (p=0.66); compact counterintuitively consumes more total tokens due to higher failure rate exhausting all rounds
+- **Tier sensitivity**: easy tier (53%) is invariant to all engine configs; medium tier (27–52%) is most sensitive; hard tier (15–24%) near-ceiling failure across all conditions
 
 ## Project deliverables
 

@@ -1,0 +1,9 @@
+Hypothesis Tests (Mann-Whitney U, two-sided, α=0.05)
+============================================================
+
+'full' vs 'compact'
+----------------------------------------
+  success rate: 39/100=39.0% vs 35/100=35.0%  p=0.6605 ns
+  Total tokens per task: median 4209.50 vs 4301.50  U=4792  p=0.6130  r=0.041  ns
+  Task latency (s): median 3.05 vs 3.05  U=4787  p=0.6036  r=0.043  ns
+  Rounds per task: median 5.00 vs 5.00  U=4684  p=0.3432  r=0.063  ns

@@ -1,0 +1,9 @@
+# Requirements for benchmark harness and analysis (Person 3)
+# Install alongside requirements-agent.txt:
+#   pip install -r requirements-agent.txt -r requirements-benchmark.txt
+
+scipy>=1.13.0
+matplotlib>=3.9.0
+numpy>=1.26.0
+pandas>=2.0.0
+requests>=2.31.0
